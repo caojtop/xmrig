@@ -32,6 +32,9 @@ jobs:
           echo 'tzdata tzdata/Areas select Asia' | debconf-set-selections
           echo 'tzdata tzdata/Zones/Asia select Shanghai' | debconf-set-selections
           apt-get update && apt-get install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          apt-get install -y --reinstall libhwloc-dev
+          ldconfig
+          pkg-config --modversion hwloc
           mkdir build && cd build
           cmake .. -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DARM_TARGET=8 -DWITH_GHOSTRIDER=OFF
           make -j$(nproc)
