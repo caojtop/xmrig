@@ -1,38 +1,41 @@
-name: Build XMRig for Linux ARM64
+name: Build xmrig for Linux ARM64
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 jobs:
-  build-arm64:
-    name: Build on ARM64 (cross-compile)
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build xmrig for ARM64
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake libuv1-dev libssl-dev libhwloc-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static
+        docker run --rm -v $(pwd):/xmrig -w /xmrig ubuntu:20.04 /bin/bash -c "
+          apt-get update && apt-get install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev
+          mkdir build && cd build
+          cmake .. -DARM_TARGET=8
+          make -j$(nproc)
+        "
 
-    - name: Configure and build (ARM64)
-      run: |
-        mkdir -p build && cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release \
-                 -DCMAKE_SYSTEM_NAME=Linux \
-                 -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-                 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-                 -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-                 -DWITH_HWLOC=OFF \
-                 -DWITH_LIBUV=OFF
-        make -j$(nproc)
-
-    - name: Upload compiled binary
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: xmrig-linux-arm64
+        name: xmrig-arm64
         path: build/xmrig
