@@ -1,0 +1,41 @@
+name: Build XMRig for Linux ARM64
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Cross compile for Linux ARM64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libssl-dev libhwloc-dev libuv1-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Configure cmake with toolchain
+        run: |
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -DWITH_HWLOC=OFF
+
+      - name: Build
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: xmrig-linux-arm64
+          path: build/xmrig
