@@ -32,14 +32,10 @@ jobs:
           mkdir build && cd build
           cmake .. -DARM_TARGET=8
           make -j$(nproc)
-          chmod -R a+rw ../build
+          mv xmrig /xmrig/xmrig-arm64
+          chmod +x /xmrig/xmrig-arm64
+          sha256sum /xmrig/xmrig-arm64 > /xmrig/xmrig-arm64.sha256
         "
-
-    - name: Prepare release asset
-      run: |
-        mv build/xmrig xmrig-arm64
-        chmod +x xmrig-arm64
-        sha256sum xmrig-arm64 > xmrig-arm64.sha256
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
