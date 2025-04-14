@@ -28,7 +28,7 @@ jobs:
     - name: Build xmrig for ARM64
       run: |
         docker run --rm -v $(pwd):/xmrig -w /xmrig --platform=linux/arm64 ubuntu:24.04 /bin/bash -c "
-          apt-get update && apt-get install -y git build-essential cmake automake libtool autoconf
+          apt-get update && apt-get install -y git build-essential cmake automake libtool autoconf libhwloc-dev
           cd scripts && ./build_deps.sh && cd ..
           mkdir build && cd build
           cmake .. -DXMRIG_DEPS=../scripts/deps
