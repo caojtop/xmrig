@@ -15,8 +15,23 @@ jobs:
       options: --platform linux/arm64
 
     steps:
-    - name: Checkout repository
+    - name: 检出代码
       uses: actions/checkout@v4
+
+    - name: 验证架构
+      run: |
+        uname -m  # 应输出 aarch64
+        lscpu
+
+    - name: 执行构建命令
+      run: |
+        echo "运行在 Ubuntu ARM64 上"
+
+    # 可选：添加自定义清理步骤
+    - name: 自定义清理
+      if: always()  # 无论作业是否失败都会运行
+      run: |
+        echo "跳过系统版本检查"
 
     - name: Set up variables
       id: vars
