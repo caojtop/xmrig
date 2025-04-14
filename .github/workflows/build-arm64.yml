@@ -11,8 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     # 使用容器运行 ARM64 镜像
     container:
-      image: ubuntu:24.04  # Ubuntu 24.04 镜像，支持 ARM64
-      options: --platform linux/arm64
+      image: arm64v8/ubuntu:24.04
 
     steps:
 
