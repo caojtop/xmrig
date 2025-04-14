@@ -46,10 +46,10 @@ jobs:
           cd build
           make -j$(nproc)
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload ARM64 Binary
+        uses: actions/upload-artifact@v4
         with:
-          name: xmrig-arm64
+          name: xmrig-arm64-${{ steps.timestamp.outputs.datetime }}
           path: build/xmrig
 
       - name: Create Release
