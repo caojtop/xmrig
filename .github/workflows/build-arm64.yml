@@ -15,8 +15,7 @@ jobs:
       options: --platform linux/arm64
 
     steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
+
 
     - name: 验证架构
       run: |
