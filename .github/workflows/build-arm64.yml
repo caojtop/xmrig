@@ -34,7 +34,7 @@ jobs:
           apt-get update
           apt-get install -y git build-essential cmake libuv1-dev:arm64 libssl-dev:arm64 libhwloc-dev:arm64 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu pkg-config
           mkdir build && cd build
-          cmake .. -DARM_TARGET=8 -DWITH_HWLOC=ON -DHWLOC_LIBRARY=/usr/lib/aarch64-linux-gnu/libhwloc.a -DLIBUV_USE_STATIC=ON
+          cmake .. -DARM_TARGET=8 -DWITH_HWLOC=ON -DHWLOC_LIBRARY=/usr/lib/aarch64-linux-gnu/libhwloc.a -DLIBUV_USE_STATIC=ON -DOPENSSL_USE_STATIC_LIBS=ON -DWITH_GHOSTRIDER=OFF -DLIBUDEV_LIBRARY=/usr/lib/aarch64-linux-gnu/libudev.a
           make -j$(nproc)
         "
 
