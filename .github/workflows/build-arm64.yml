@@ -32,6 +32,7 @@ jobs:
           mkdir build && cd build
           cmake .. -DARM_TARGET=8
           make -j$(nproc)
+          chmod -R a+rw ../build
         "
 
     - name: Prepare release asset
