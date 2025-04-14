@@ -1,62 +1,63 @@
-name: Build ARM64 XMRig
+name: Build xmrig for Linux ARM64
 
 on:
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   build-arm64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-arm64
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up build timestamp
-        id: vars
-        run: echo "RELEASE_TAG=xmrig-arm64-$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
+    - name: Set up variables
+      id: vars
+      run: echo "RELEASE_TAG=xmrig-arm64-$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
 
-      - name: Install cross-compile toolchain and dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            build-essential cmake automake libtool autoconf \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            pkg-config libhwloc-dev libuv1-dev
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          git build-essential cmake automake libtool autoconf
 
-      - name: Build dependencies
-        run: |
-          cd scripts
-          ./build_deps.sh
+    - name: Cache xmrig dependencies
+      uses: actions/cache@v3
+      with:
+        path: scripts/deps
+        key: xmrig-deps-${{ runner.os }}-${{ hashFiles('scripts/build_deps.sh') }}
+        restore-keys: |
+          xmrig-deps-${{ runner.os }}-
 
-      - name: Configure with CMake for ARM64
-        run: |
-          mkdir -p build && cd build
-          cmake .. \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-            -DXMRIG_DEPS=../scripts/deps \
-            -DCMAKE_BUILD_TYPE=Release
+    - name: Build dependencies
+      run: |
+        cd scripts
+        ./build_deps.sh
 
-      - name: Build XMRig
-        run: |
-          cd build
-          make -j$(nproc)
+    - name: Configure (CMake for ARM64)
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DXMRIG_DEPS=scripts/deps
 
-      - name: Upload ARM64 Binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: xmrig-arm64-${{ steps.timestamp.outputs.datetime }}
-          path: build/xmrig
+    - name: Build xmrig
+      run: |
+        cd build
+        make -j$(nproc)
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: XMRig ARM64 ${{ env.RELEASE_TAG }}
-          tag_name: ${{ env.RELEASE_TAG }}
-          files: build/xmrig
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Archive binary
+      run: |
+        mkdir -p output
+        cp build/xmrig output/xmrig-linux-arm64
+        tar -czvf xmrig-linux-arm64.tar.gz -C output xmrig-linux-arm64
+
+    - name: Create GitHub Release and Upload Artifact
+      uses: softprops/action-gh-release@v1
+      with:
+        name: ${{ env.RELEASE_TAG }}
+        tag_name: ${{ env.RELEASE_TAG }}
+        files: xmrig-linux-arm64.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
