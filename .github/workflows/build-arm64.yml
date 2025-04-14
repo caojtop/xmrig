@@ -7,7 +7,12 @@ on:
 
 jobs:
   build-arm64:
-    runs-on: ubuntu-latest-arm64
+    # 指定运行在支持 ARM64 的环境中
+    runs-on: ubuntu-latest
+    # 使用容器运行 ARM64 镜像
+    container:
+      image: ubuntu:24.04  # Ubuntu 24.04 镜像，支持 ARM64
+      options: --platform linux/arm64
 
     steps:
     - name: Checkout repository
