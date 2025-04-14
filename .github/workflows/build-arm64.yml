@@ -27,14 +27,10 @@ jobs:
     - name: Build xmrig for ARM64
       run: |
         docker run --rm -v $(pwd):/xmrig -w /xmrig --platform=linux/arm64 ubuntu:24.04 /bin/bash -c "
-          export DEBIAN_FRONTEND=noninteractive
-          echo 'tzdata tzdata/Areas select Asia' | debconf-set-selections
-          echo 'tzdata tzdata/Zones/Asia select Shanghai' | debconf-set-selections
-          dpkg --add-architecture arm64
           apt-get update
-          apt-get install -y git build-essential cmake libuv1-dev:arm64 libssl-dev:arm64 libhwloc-dev:arm64 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu pkg-config
+          apt-get install -y git build-essential cmake libuv1-dev:arm64 libssl-dev:arm64 libhwloc-dev:arm64 libudev-dev:arm64 libblkid-dev:arm64 libselinux1-dev:arm64 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu pkg-config
           mkdir build && cd build
-          cmake .. -DARM_TARGET=8 -DWITH_HWLOC=ON -DHWLOC_LIBRARY=/usr/lib/aarch64-linux-gnu/libhwloc.a -DLIBUV_USE_STATIC=ON -DOPENSSL_USE_STATIC_LIBS=ON -DWITH_GHOSTRIDER=OFF -DLIBUDEV_LIBRARY=/usr/lib/aarch64-linux-gnu/libudev.a
+          cmake .. -DARM_TARGET=8 -DWITH_HWLOC=ON -DHWLOC_LIBRARY=/usr/lib/aarch64-linux-gnu/libhwloc.a -DLIBUV_USE_STATIC=ON -DOPENSSL_USE_STATIC_LIBS=ON -DWITH_GHOSTRIDER=OFF -DLIBUDEV_LIBRARY=/usr/lib/aarch64-linux-gnu/libudev.a -DLIBBLKID_LIBRARY=/usr/lib/aarch64-linux-gnu/libblkid.a -DLIBSELINUX_LIBRARY=/usr/lib/aarch64-linux-gnu/libselinux.a
           make -j$(nproc)
         "
 
@@ -50,7 +46,5 @@ jobs:
         files: |
           xmrig-arm64
           xmrig-arm64.sha256
-        draft: false
-        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
