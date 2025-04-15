@@ -21,7 +21,7 @@ jobs:
       run: |
         apt update
         apt install -y \
-          git build-essential cmake automake libtool autoconf
+          git build-essential cmake automake libtool autoconf wget
 
     - name: Cache xmrig dependencies
       uses: actions/cache@v3
