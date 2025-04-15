@@ -2,11 +2,8 @@ name: Build xmrig for Linux ARM64
 
 on:
   push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+    paths:
+      - '.github/workflows/build-arm64.yml​'  # 仅监听workflows目录下的文件变更
   workflow_dispatch:
 
 jobs:
