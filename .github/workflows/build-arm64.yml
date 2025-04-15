@@ -8,32 +8,56 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    container:
+      image: ubuntu:24.04  # 使用 ARM64 兼容的镜像
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - name: Set up variables
+      id: vars
+      run: echo "RELEASE_TAG=xmrig-arm64-$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build xmrig for ARM64
+    - name: Install dependencies
       run: |
-        docker run --rm -v $(pwd):/xmrig -w /xmrig --platform=linux/arm64 ubuntu:24.04 /bin/bash -c "
-          apt-get update && apt-get install -y git build-essential cmake automake libtool autoconf libhwloc-dev libuv1-dev
-          cd scripts && ./build_deps.sh && cd ..
-          mkdir build && cd build
-          cmake .. -DXMRIG_DEPS=../scripts/deps -DOPENSSL_ROOT_DIR=../scripts/deps
-          make -j$(nproc)
-        "
+        sudo apt update
+        sudo apt install -y \
+          git build-essential cmake automake libtool autoconf
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+    - name: Cache xmrig dependencies
+      uses: actions/cache@v3
       with:
-        name: xmrig-arm64
-        path: build/xmrig
+        path: scripts/deps
+        key: xmrig-deps-${{ runner.os }}-${{ hashFiles('scripts/build_deps.sh') }}
+        restore-keys: |
+          xmrig-deps-${{ runner.os }}-
+
+    - name: Build dependencies
+      run: |
+        cd scripts
+        ./build_deps.sh
+
+    - name: Configure (CMake for ARM64)
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DXMRIG_DEPS=scripts/deps
+
+    - name: Build xmrig
+      run: |
+        cd build
+        make -j$(nproc)
+
+    - name: Archive binary
+      run: |
+        mkdir -p output
+        cp build/xmrig output/xmrig-linux-arm64
+        tar -czvf xmrig-linux-arm64.tar.gz -C output xmrig-linux-arm64
+
+    - name: Create GitHub Release and Upload Artifact
+      uses: softprops/action-gh-release@v1
+      with:
+        name: ${{ env.RELEASE_TAG }}
+        tag_name: ${{ env.RELEASE_TAG }}
+        files: xmrig-linux-arm64.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
