@@ -1,5 +1,9 @@
 name: CI
-on: [push]
+on:
+  push:
+    paths:
+      - '.github/workflows/main.yml​'  # 仅监听workflows目录下的文件变更
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ociarm64  # 使用你在配置运行器时设置的标签
