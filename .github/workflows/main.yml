@@ -1,0 +1,10 @@
+name: CI
+on: [push]
+jobs:
+  build:
+    runs-on: oci-arm64  # 使用你在配置运行器时设置的标签
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Running on OCI ARM64 host"
+      - run: uname -a
+      - run: echo "Test file" > /tmp/github-actions-test.txt
