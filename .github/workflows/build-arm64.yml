@@ -50,17 +50,16 @@ jobs:
     - name: Package
       run: |
         cd build
-        cp xmrig ../xmrig-${{ github.event.release.tag_name }}-linux-arm64
         tar -czf xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz xmrig
         sha256sum xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz > SHA256SUMS
 
-    - name: Upload to your fork's same tag (自动创建或更新 release)
+    - name: Upload ARM64 build to official tag release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.event.release.tag_name }}   # 完全同步官方 tag，如 v6.24.0
+        tag_name: ${{ github.event.release.tag_name }}
         name: ARM64 Build - ${{ github.event.release.tag_name }}
         files: |
           build/xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz
           build/SHA256SUMS
         fail_on_unmatched_files: true
-        generate_release_notes: true
+        overwrite: true
