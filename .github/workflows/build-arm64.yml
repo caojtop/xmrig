@@ -47,19 +47,18 @@ jobs:
         make -j$(nproc)
         strip xmrig
 
-    - name: Package
+    - name: Package & Upload
       run: |
         cd build
         tar -czf xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz xmrig
         sha256sum xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz > SHA256SUMS
 
-    - name: Upload ARM64 build to official tag release
+    - name: Release ARM64 binary
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.event.release.tag_name }}
-        name: ARM64 Build - ${{ github.event.release.tag_name }}
         files: |
           build/xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz
           build/SHA256SUMS
+        overwrite_files: true
         fail_on_unmatched_files: true
-        overwrite: true
