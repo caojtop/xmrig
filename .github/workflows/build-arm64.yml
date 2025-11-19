@@ -1,83 +1,75 @@
-name: Auto Build ARM64 on Official Release
+name: Auto Build XMRig ARM64 (cron + manual)
 
-# 触发方式：官方 xmrig 仓库每打一个新 tag，就触发你的 ARM64 自托管 runner
+# 每6小时检查一次官方最新 release（可改成 '0 3 * * *' 每天凌晨3点）
 on:
-  release:
-    types: [published]                  # 官方发布正式版时触发
-  workflow_dispatch:                    # 手动调试用
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:   # 手动触发
 
 jobs:
   build-arm64:
-    runs-on: self-hosted                  # ← 必须这行！用你自己的 ARM64 服务器
-    # 不需要 container，因为你已经在 ARM64 Ubuntu 本机环境里
-
+    runs-on: self-hosted   # 你的 ARM64 自托管 runner
     steps:
-    - name: Clean workspace (self-hosted)
-      run: |
-        rm -rf ./*
-        rm -rf ./.??*
-        ls -la
+      # 1. 防止 apt/dpkg 卡死（self-hosted 必备）
+      - name: Fix apt/dpkg lock
+        run: |
+          sudo killall -9 apt apt-get dpkg || true
+          sudo rm -f /var/lib/dpkg/lock* /var/cache/apt/archives/lock || true
+          sudo dpkg --configure -a || true
 
-    - name: Checkout official xmrig source
-      uses: actions/checkout@v4
-      with:
-        repository: xmrig/xmrig
-        ref: ${{ github.event.release.tag_name }}
+      # 2. 清理工作区（self-hosted 必备）
+      - name: Clean workspace
+        run: |
+          rm -rf ./* ./.??* || true
 
-    - name: Install dependencies (only once or cache)
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential cmake libuv1-dev libssl-dev libhwloc-dev
+      # 3. 获取官方最新 tag
+      - name: Get official latest tag
+        id: latest
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+          echo "latest_tag=$LATEST" >> $GITHUB_OUTPUT
+          echo "Official latest release: $LATEST"
 
-    - name: Show version & CPU info
-      run: |
-        echo "Building XMRig ${{ github.event.release.tag_name }} on $(uname -m)"
-        nproc
+      # 4. 检查你自己的仓库是否已经存在这个 tag 的 release（已构建过就跳过）
+      - name: Check if already built
+        id: check
+        run: |
+          if gh release view ${{ steps.latest.outputs.latest_tag }} --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "already_built=true" >> $GITHUB_OUTPUT
+            echo "✓ ARM64 package already exists for ${{ steps.latest.outputs.latest_tag }}, skipping build."
+          else
+            echo "already_built=false" >> $GITHUB_OUTPUT
+            echo "✗ No ARM64 package yet → will build ${{ steps.latest.outputs.latest_tag }}"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
-    - name: CMake & Make (ARM64 optimized)
-      run: |
-        mkdir -p build && cd build
-        cmake .. \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DARM_TARGET=8 \
-          -DWITH_HWLOC=ON \
-          -DWITH_OPENCL=OFF \
-          -DWITH_CUDA=OFF \
-          -DWITH_TLS=ON
-        make -j$(nproc)
-        strip xmrig
+      # 5. 只有没构建过才执行下面所有步骤
+      - name: Checkout + Build + Upload (only if new)
+        if: steps.check.outputs.already_built == 'false'
+        env:
+          TAG: ${{ steps.latest.outputs.latest_tag }}     # ← 所有环境变量放一起
+          GH_TOKEN: ${{ github.token }}                   # ← 合并，不要再单独写 env 了
+        run: |
+          echo "=== Starting build for $TAG ==="
 
-    - name: Determine release tag
-      id: tag
-      run: |
-        if [ "${{ github.event.release.tag_name }}" != "" ]; then
-          echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-          echo "Using official release tag: ${{ github.event.release.tag_name }}"
-        else
-          # 手动运行时自动使用官方最新 tag（超级稳）
-          LATEST_TAG=$(curl -s https://api.github.com/repos/xmrig/xmrig/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "Manual run → using official latest tag: $LATEST_TAG"
-        fi
+          git clone --depth 1 --branch $TAG https://github.com/xmrig/xmrig.git .
+          
+          sudo apt update
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential cmake libuv1-dev libssl-dev libhwloc-dev
 
-    - name: Package ARM64 binary
-      run: |
-        cd build
-        tar -czf xmrig-${{ steps.tag.outputs.tag }}-linux-arm64.tar.gz xmrig
-        sha256sum xmrig-${{ steps.tag.outputs.tag }}-linux-arm64.tar.gz > SHA256SUMS
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DARM_TARGET=8 -DWITH_HWLOC=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF
+          make -j$(nproc)
+          strip xmrig
 
-    - name: Upload to release (手动/自动都完美工作)
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ steps.tag.outputs.tag }}                 # 关键！统一用这个
-        name: ARM64 Build - ${{ steps.tag.outputs.tag }}
-        body: |
-          Automated ARM64 build for XMRig ${{ steps.tag.outputs.tag }}
+          tar -czf xmrig-${TAG}-linux-arm64.tar.gz xmrig
+          sha256sum xmrig-${TAG}-linux-arm64.tar.gz > SHA256SUMS
 
-          Built on real ARM64 self-hosted runner with crypto extensions enabled.
-        files: |
-          build/xmrig-${{ steps.tag.outputs.tag }}-linux-arm64.tar.gz
-          build/SHA256SUMS
-        overwrite_files: true
-        fail_on_unmatched_files: true
-        generate_release_notes: false
+          gh release create $TAG \
+            xmrig-${TAG}-linux-arm64.tar.gz \
+            SHA256SUMS \
+            --title "ARM64 Build - $TAG" \
+            --notes "Automated ARM64 build for official XMRig $TAG (real ARM64 hardware + crypto extensions)" \
+            --repo ${{ github.repository }} \
+            --clobber   # 允许覆盖已存在文件
