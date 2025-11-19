@@ -79,5 +79,4 @@ jobs:
             SHA256SUMS \
             --title "ARM64 Build - $TAG" \
             --notes "Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)" \
-            --repo ${{ github.repository }} \
-            --clobber
+            --repo ${{ github.repository }}
