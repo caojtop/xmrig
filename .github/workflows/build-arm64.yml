@@ -3,7 +3,7 @@ name: Auto Build XMRig ARM64 (cron + manual)
 # 每6小时检查一次官方最新 release（可改成 '0 3 * * *' 每天凌晨3点）
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 6 * * *'
   workflow_dispatch:   # 手动触发
 
 jobs:
@@ -48,21 +48,25 @@ jobs:
       - name: Checkout + Build + Upload (only if new)
         if: steps.check.outputs.already_built == 'false'
         env:
-          TAG: ${{ steps.latest.outputs.latest_tag }}     # ← 所有环境变量放一起
-          GH_TOKEN: ${{ github.token }}                   # ← 合并，不要再单独写 env 了
+          TAG: ${{ steps.latest.outputs.latest_tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "=== Starting build for $TAG ==="
+          echo "=== Installing GitHub CLI (gh) ==="
+          # 自动安装最新版 gh（ARM64 完美支持）
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install -y gh
 
+          # 下面是你原来的全部代码（不变）
+          echo "=== Starting build for $TAG ==="
           git clone --depth 1 --branch $TAG https://github.com/xmrig/xmrig.git .
-          
           sudo apt update
           sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential cmake libuv1-dev libssl-dev libhwloc-dev
-
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release -DARM_TARGET=8 -DWITH_HWLOC=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF
           make -j$(nproc)
           strip xmrig
-
           tar -czf xmrig-${TAG}-linux-arm64.tar.gz xmrig
           sha256sum xmrig-${TAG}-linux-arm64.tar.gz > SHA256SUMS
 
@@ -70,6 +74,6 @@ jobs:
             xmrig-${TAG}-linux-arm64.tar.gz \
             SHA256SUMS \
             --title "ARM64 Build - $TAG" \
-            --notes "Automated ARM64 build for official XMRig $TAG (real ARM64 hardware + crypto extensions)" \
+            --notes "Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)" \
             --repo ${{ github.repository }} \
-            --clobber   # 允许覆盖已存在文件
+            --clobber
