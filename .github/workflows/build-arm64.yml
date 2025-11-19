@@ -1,38 +1,65 @@
-name: Build ARM64 Release
+name: Auto Build ARM64 on Official Release
 
+# 触发方式：官方 xmrig 仓库每打一个新 tag，就触发你的 ARM64 自托管 runner
 on:
   release:
-    types: [published]
-  workflow_dispatch:
+    types: [published]                  # 官方发布正式版时触发
+  workflow_dispatch:                    # 手动调试用
 
 jobs:
   build-arm64:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted                  # ← 必须这行！用你自己的 ARM64 服务器
+    # 不需要 container，因为你已经在 ARM64 Ubuntu 本机环境里
+
     steps:
-    - uses: actions/checkout@v4
+    - name: Clean workspace
+      run: |
+        sudo rm -rf /home/runner/work/xmrig/xmrig/*
+        sudo chown -R runner:runner .
+
+    - name: Checkout official latest tag
+      uses: actions/checkout@v4
       with:
         repository: xmrig/xmrig
-        ref: ${{ github.event.release.tag_name }}
+        ref: ${{ github.event.release.tag_name }}   # 精确拉取官方最新 v6.x.x
 
-    - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev
-
-    - name: Build static ARM64
+    - name: Install dependencies (only once or cache)
       run: |
-        mkdir build && cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DARM_TARGET=8 -DWITH_HWLOC=ON
+        sudo apt update
+        sudo apt install -y build-essential cmake libuv1-dev libssl-dev libhwloc-dev
+
+    - name: Show version & CPU info
+      run: |
+        echo "Building XMRig ${{ github.event.release.tag_name }} on $(uname -m)"
+        nproc
+
+    - name: CMake & Make (ARM64 optimized)
+      run: |
+        mkdir -p build && cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DARM_TARGET=8 \
+          -DWITH_HWLOC=ON \
+          -DWITH_OPENCL=OFF \
+          -DWITH_CUDA=OFF \
+          -DWITH_TLS=ON
         make -j$(nproc)
         strip xmrig
 
     - name: Package
       run: |
         cd build
+        cp xmrig ../xmrig-${{ github.event.release.tag_name }}-linux-arm64
         tar -czf xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz xmrig
-        sha256sum xmrig-*.tar.gz > SHA256SUMS
+        sha256sum xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz > SHA256SUMS
 
-    - name: Upload to release (use default GITHUB_TOKEN)
+    - name: Upload to your fork's same tag (自动创建或更新 release)
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ github.event.release.tag_name }}   # 完全同步官方 tag，如 v6.24.0
+        name: ARM64 Build - ${{ github.event.release.tag_name }}
         files: |
           build/xmrig-${{ github.event.release.tag_name }}-linux-arm64.tar.gz
           build/SHA256SUMS
+        fail_on_unmatched_files: true
+        generate_release_notes: true
