@@ -12,16 +12,17 @@ jobs:
     # 不需要 container，因为你已经在 ARM64 Ubuntu 本机环境里
 
     steps:
-    - name: Clean workspace
+    - name: Clean workspace (self-hosted)
       run: |
-        sudo rm -rf /home/runner/work/xmrig/xmrig/*
-        sudo chown -R runner:runner .
+        rm -rf ./*
+        rm -rf ./.??*
+        ls -la
 
-    - name: Checkout official latest tag
+    - name: Checkout official xmrig source
       uses: actions/checkout@v4
       with:
         repository: xmrig/xmrig
-        ref: ${{ github.event.release.tag_name }}   # 精确拉取官方最新 v6.x.x
+        ref: ${{ github.event.release.tag_name }}
 
     - name: Install dependencies (only once or cache)
       run: |
