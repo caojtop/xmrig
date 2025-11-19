@@ -10,12 +10,16 @@ jobs:
   build-arm64:
     runs-on: self-hosted   # 你的 ARM64 自托管 runner
     steps:
-      # 1. 防止 apt/dpkg 卡死（self-hosted 必备）
-      - name: Fix apt/dpkg lock
+      - name: Prevent apt/dpkg/man-db deadlocks (ARM64 lifesaver)
         run: |
+          # 解锁 apt/dpkg
           sudo killall -9 apt apt-get dpkg || true
           sudo rm -f /var/lib/dpkg/lock* /var/cache/apt/archives/lock || true
           sudo dpkg --configure -a || true
+
+          # 永别 1049h25l（man-db 无限循环）
+          sudo killall -9 man mandb || true
+          sudo chmod -x /usr/bin/mandb /usr/bin/man || true   # 禁用触发器，不会影响正常使用
 
       # 2. 清理工作区（self-hosted 必备）
       - name: Clean workspace
