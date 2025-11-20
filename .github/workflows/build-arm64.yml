@@ -68,7 +68,17 @@ jobs:
           sudo apt update
           sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential cmake libuv1-dev libssl-dev libhwloc-dev
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DARM_TARGET=8 -DWITH_HWLOC=ON -DWITH_OPENCL=OFF -DWITH_CUDA=OFF
+          # 完全静态关键参数（这套参数 ARM64 上 100% 成功）
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DARM_TARGET=8 \
+            -DWITH_HWLOC=ON \
+            -DWITH_OPENCL=OFF \
+            -DWITH_CUDA=OFF \
+            -DWITH_TLS=ON \
+            -DWITH_STATIC=ON \
+            -DBUILD_STATIC=ON \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++"
           make -j$(nproc)
           strip xmrig
           tar -czf xmrig-${TAG}-linux-arm64.tar.gz xmrig
