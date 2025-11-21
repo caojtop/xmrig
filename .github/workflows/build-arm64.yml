@@ -52,8 +52,8 @@ jobs:
         if: steps.check.outputs.already_built == 'false'
         run: |
           git clone --depth 1 --branch ${{ steps.latest.outputs.latest_tag }} https://github.com/xmrig/xmrig.git .
-          apt update
-          apt install -y \
+          sudo apt update
+          sudo apt install -y \
             git build-essential cmake automake libtool autoconf wget
   
       - name: Cache xmrig dependencies
