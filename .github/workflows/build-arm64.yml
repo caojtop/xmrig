@@ -89,8 +89,9 @@ jobs:
           TAG: ${{ steps.latest.outputs.latest_tag }}
         run: |
           cd build
-          tar -czf xmrig-${TAG}-linux-arm64.tar.gz xmrig
-          sha256sum xmrig-${TAG}-linux-arm64.tar.gz > SHA256SUMS
+          tar -czf xmrig-${TAG#v}-linux-static-arm64.tar.gz xmrig
+          sha256sum xmrig-${TAG#v}-linux-static-arm64.tar.gz > SHA256SUMS
+          echo "FILENAME=xmrig-${TAG#v}-linux-static-arm64.tar.gz" >> $GITHUB_ENV
   
       - name: Create GitHub Release and Upload Artifact
         if: steps.check.outputs.already_built == 'false'
@@ -103,5 +104,5 @@ jobs:
           name: ARM64 Build - ${{ env.TAG }}
           body: Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)
           files: |
-            build/xmrig-${{ env.TAG }}-linux-arm64.tar.gz
+            build/${{ env.FILENAME }}
             build/SHA256SUMS
