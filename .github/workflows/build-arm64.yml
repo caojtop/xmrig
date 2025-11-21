@@ -58,15 +58,13 @@ jobs:
   
       - name: Cache xmrig dependencies
         if: steps.check.outputs.already_built == 'false'
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: scripts/deps
           key: xmrig-deps-${{ runner.os }}-${{ hashFiles('scripts/build_deps.sh') }}
-          restore-keys: |
-            xmrig-deps-${{ runner.os }}-
   
       - name: Build dependencies
-        if: steps.check.outputs.already_built == 'false'
+        if: steps.check.outputs.already_built == 'false' && !contains(ls -A scripts/deps, '*')
         run: |
           cd scripts
           ./build_deps.sh
