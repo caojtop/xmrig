@@ -104,5 +104,5 @@ jobs:
           name: ARM64 Build - ${{ env.TAG }}
           body: Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)
           files: |
-            xmrig-${{ env.TAG }}-linux-arm64.tar.gz
-            SHA256SUMS
+            build/xmrig-${{ env.TAG }}-linux-arm64.tar.gz
+            build/SHA256SUMS
