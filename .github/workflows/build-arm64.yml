@@ -50,10 +50,8 @@ jobs:
           
       - name: Install dependencies
         if: steps.check.outputs.already_built == 'false'
-        env:
-          TAG: ${{ steps.latest.outputs.latest_tag }}
         run: |
-          git clone --depth 1 --branch $TAG https://github.com/xmrig/xmrig.git .
+          git clone --depth 1 --branch ${{ steps.latest.outputs.latest_tag }} https://github.com/xmrig/xmrig.git .
           apt update
           apt install -y \
             git build-essential cmake automake libtool autoconf wget
