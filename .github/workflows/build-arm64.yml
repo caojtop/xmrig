@@ -57,6 +57,7 @@ jobs:
             git build-essential cmake automake libtool autoconf wget
   
       - name: Cache xmrig dependencies
+        id: cache-deps                     # 给这一步加个 id
         if: steps.check.outputs.already_built == 'false'
         uses: actions/cache@v4
         with:
@@ -64,7 +65,7 @@ jobs:
           key: xmrig-deps-${{ runner.os }}-${{ hashFiles('scripts/build_deps.sh') }}
   
       - name: Build dependencies
-        if: steps.check.outputs.already_built == 'false' && !contains(ls -A scripts/deps, '*')
+        if: steps.check.outputs.already_built == 'false' && steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           cd scripts
           ./build_deps.sh
