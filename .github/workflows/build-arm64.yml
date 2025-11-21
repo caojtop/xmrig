@@ -47,46 +47,63 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ github.token }}
-
-      # 5. 只有没构建过才执行下面所有步骤
-      - name: Checkout + Build + Upload (only if new)
+          
+      - name: Install dependencies
         if: steps.check.outputs.already_built == 'false'
         env:
           TAG: ${{ steps.latest.outputs.latest_tag }}
-          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "=== Installing GitHub CLI (gh) ==="
-          # 自动安装最新版 gh（ARM64 完美支持）
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install -y gh
-
-          # 下面是你原来的全部代码（不变）
-          echo "=== Starting build for $TAG ==="
           git clone --depth 1 --branch $TAG https://github.com/xmrig/xmrig.git .
-          sudo apt update
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential cmake libuv1-dev libssl-dev libhwloc-dev
-          mkdir build && cd build
-          # 完全静态关键参数（这套参数 ARM64 上 100% 成功）
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DARM_TARGET=8 \
-            -DWITH_HWLOC=ON \
-            -DWITH_OPENCL=OFF \
-            -DWITH_CUDA=OFF \
-            -DWITH_TLS=ON \
-            -DWITH_STATIC=ON \
-            -DBUILD_STATIC=ON \
-            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++"
+          apt update
+          apt install -y \
+            git build-essential cmake automake libtool autoconf wget
+  
+      - name: Cache xmrig dependencies
+        if: steps.check.outputs.already_built == 'false'
+        uses: actions/cache@v3
+        with:
+          path: scripts/deps
+          key: xmrig-deps-${{ runner.os }}-${{ hashFiles('scripts/build_deps.sh') }}
+          restore-keys: |
+            xmrig-deps-${{ runner.os }}-
+  
+      - name: Build dependencies
+        if: steps.check.outputs.already_built == 'false'
+        run: |
+          cd scripts
+          ./build_deps.sh
+  
+      - name: Configure (CMake for ARM64)
+        if: steps.check.outputs.already_built == 'false'
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DXMRIG_DEPS=scripts/deps
+  
+      - name: Build xmrig
+        if: steps.check.outputs.already_built == 'false'
+        run: |
+          cd build
           make -j$(nproc)
-          strip xmrig
+  
+      - name: Archive binary
+        if: steps.check.outputs.already_built == 'false'
+        env:
+          TAG: ${{ steps.latest.outputs.latest_tag }}
+        run: |
           tar -czf xmrig-${TAG}-linux-arm64.tar.gz xmrig
           sha256sum xmrig-${TAG}-linux-arm64.tar.gz > SHA256SUMS
-
-          gh release create $TAG \
-            xmrig-${TAG}-linux-arm64.tar.gz \
-            SHA256SUMS \
-            --title "ARM64 Build - $TAG" \
-            --notes "Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)" \
-            --repo ${{ github.repository }}
+  
+      - name: Create GitHub Release and Upload Artifact
+        if: steps.check.outputs.already_built == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: $TAG
+          name: ARM64 Build - $TAG
+          body: Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)
+          files: |
+            xmrig-$TAG-linux-arm64.tar.gz
+            SHA256SUMS
+        env:
+          TAG: ${{ steps.latest.outputs.latest_tag }}
+          GH_TOKEN: ${{ github.token }}
