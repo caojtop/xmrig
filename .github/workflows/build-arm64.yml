@@ -89,19 +89,20 @@ jobs:
         env:
           TAG: ${{ steps.latest.outputs.latest_tag }}
         run: |
+          cd build
           tar -czf xmrig-${TAG}-linux-arm64.tar.gz xmrig
           sha256sum xmrig-${TAG}-linux-arm64.tar.gz > SHA256SUMS
   
       - name: Create GitHub Release and Upload Artifact
         if: steps.check.outputs.already_built == 'false'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: $TAG
-          name: ARM64 Build - $TAG
-          body: Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)
-          files: |
-            xmrig-$TAG-linux-arm64.tar.gz
-            SHA256SUMS
         env:
           TAG: ${{ steps.latest.outputs.latest_tag }}
           GH_TOKEN: ${{ github.token }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: ARM64 Build - ${{ env.TAG }}
+          body: Automated ARM64 build for XMRig $TAG (real ARM64 hardware + crypto extensions)
+          files: |
+            xmrig-${{ env.TAG }}-linux-arm64.tar.gz
+            SHA256SUMS
